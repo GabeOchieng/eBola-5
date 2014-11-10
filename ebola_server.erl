@@ -1,17 +1,39 @@
 -module(ebola_server).
--export([start/2, loop/1, print_all_patients/1]).
+-export([start/3, loop/1, print_all_patients/1]).
 
-start(NumPatients, Names) ->
-	Patients = make_patients(NumPatients, Names),
-	spawn(ebola_server, loop, [Patients]).
+% Creates a list of Patient PIDs and spawns the server loop.
+% Takes in number of patients, a list of names and a list of their current health status
+start(NumPatients, Names, Health) ->
+	Patients = make_patients(NumPatients, Names, Health),
+	Server = spawn(ebola_server, loop, [Patients]),
+	send_server_to_patients(Patients, Server).
 
-make_patients(0, _X) -> [];
-make_patients(NumPatients, [A | B]) -> [spawn(patient, start, [A]) | make_patients(NumPatients - 1, B)].
+% Creates a list of PIDs of the patients.
+make_patients(0, _X, _Y) -> [];
+make_patients(NumPatients, [A | B], [C | D]) -> 
+		[spawn(patient, start, [{A, C}]) | make_patients(NumPatients - 1, B, D)].
 
+% Server loop.
 loop(Patients) ->
-	 print_all_patients(Patients),
-	 timer:apply_after(5000, ebola_server, loop, [Patients]).
+	 %print_all_patients(Patients),
+	 %timer:apply_after(5000, ebola_server, loop, [Patients]).
 
+	receive
+		{Name, Health} 		-> print_patient_state(Name, Health)
+		% true 			 	-> print_patient_state("Fuckface", "sick")
+	after 0      			-> timeout
+	end,
+
+	loop(Patients).
+
+print_patient_state(Name, Health) ->
+	Msg = string:concat(string:concat(Name, " is "), Health),
+	io:fwrite(string:concat(Msg, "~n")).
+
+send_server_to_patients([A | []], Server) -> A ! {server, Server};
+send_server_to_patients([A | B], Server) -> A ! {server, Server}, send_server_to_patients(B, Server).
+
+% Send a 'print' message to all the patients.
 print_all_patients([A | [] ]) -> A ! print;
 print_all_patients([A | B]) -> 
 						A ! print, 
