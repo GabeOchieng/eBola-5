@@ -1,5 +1,5 @@
 -module(ebola_server).
--export([start/3, loop/1, print_all_patients/1]).
+-export([start/4, loop/1, print_all_patients/1]).
 
 % Creates a list of Patient PIDs and spawns the server loop.
 % Takes in number of patients, a list of names and a list of their current health status
