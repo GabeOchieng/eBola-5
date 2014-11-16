@@ -1,12 +1,13 @@
 -module(ebola_server).
--export([start/4, loop/1, print_all_patients/1]).
+-export([start/5, loop/1, print_all_patients/1, run/0]).
 
 % Creates a list of Patient PIDs and spawns the server loop.
 % Takes in number of patients, a list of names and a list of their current health status
-start(NumPatients, Names, Health, Coordinates) ->
+start(NumPatients, Names, Health, Coordinates, {DiseaseName, Tick_time, Strength}) ->
 	Patients = make_patients(NumPatients, Names, Health, Coordinates),
 	Server = spawn(ebola_server, loop, [Patients]),
-	send_server_to_patients(Patients, Server).
+	send_server_to_patients(Patients, Server),
+	spawn(disease, start, [ [DiseaseName, Patients, {Tick_time, Strength}] ]).
 
 % Creates a list of tuple of {PIDs, Coordinate} of the patients.
 make_patients(0, _X, _Y, _Z) -> [];
@@ -39,3 +40,11 @@ print_all_patients([A | [] ]) -> A ! print;
 print_all_patients([A | B]) -> 
 						A ! print, 
 						print_all_patients(B).
+
+run() ->
+	start(4, 
+		["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"],
+		["", "", "", ""],
+		[0, 0, 0, 0],
+		{"E-Bola", 5, 0.5}
+	).

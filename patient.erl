@@ -9,16 +9,24 @@ start({Name, Health}) ->
 
 % Continuously loop 
 loop({Name, Health, Server}) ->
-	receive
-		print 		-> io:fwrite(string:concat(Name, ": Sup Bros!~n"))
+	%receive
+	%	print 		-> io:fwrite(string:concat(Name, ": Sup Bros!~n"))
+	%after 0      -> timeout
+	%end,
+
+	%NewHealth = sick(),
+
+	%Server ! {Name, Health},
+
+	%timer:apply_after(5000, patient, loop, [{Name, NewHealth, Server}]).
+
+	receive 
+		sick 	 -> Server ! {Name, "sick"};
+		healthy  -> Server ! {Name, "healthy"}
 	after 0      -> timeout
 	end,
 
-	NewHealth = sick(),
-
-	Server ! {Name, Health},
-
-	timer:apply_after(5000, patient, loop, [{Name, NewHealth, Server}]).
+	loop({Name, Health, Server}).
 
 sick() -> 
 	Rnd = random:uniform(),
