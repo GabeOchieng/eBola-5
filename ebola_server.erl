@@ -3,11 +3,12 @@
 
 % Creates a list of Patient PIDs and spawns the server loop.
 % Takes in number of patients, a list of names and a list of their current health status
+% Coordinates is a tuple of {X, Y}.
 start(NumPatients, Names, Health, Coordinates, {DiseaseName, Tick_time, Strength}) ->
 	Patients = make_patients(NumPatients, Names, Health, Coordinates),
-	Server = spawn(ebola_server, loop, [Patients]),
-	send_server_to_patients(Patients, Server),
-	spawn(disease, start, [ [DiseaseName, Patients, {Tick_time, Strength}] ]).
+	Disease = spawn(disease, start, [ [DiseaseName, Patients, {Tick_time, Strength}] ])
+	Server = spawn(ebola_server, loop, [Patients, Disease]),
+	send_server_to_patients(Patients, Server).
 
 % Creates a list of tuple of {PIDs, Coordinate} of the patients.
 make_patients(0, _X, _Y, _Z) -> [];
@@ -16,17 +17,18 @@ make_patients(NumPatients, [A | B], [C | D], [E | F]) ->
 		[ {spawn(patient, start, [{A, C}]), E} | make_patients(NumPatients - 1, B, D, F)].
 
 % Server loop.
-loop(Patients) ->
+loop(Patients, Disease) ->
 	 %print_all_patients(Patients),
 	 %timer:apply_after(5000, ebola_server, loop, [Patients]).
 
 	receive
-		{Name, Health} 		-> print_patient_state(Name, Health)
+		{state_change, Name, Health} -> print_patient_state(Name, Health); % Produce new Patients list with changed state.
+		{spread, PID, Health} 		 -> find_coord(Patients, PID, Health, Patients, Disease) % Need to find neighbors here.
 		% true 			 	-> print_patient_state("Fuckface", "sick")
 	after 0      			-> timeout
 	end,
 
-	loop(Patients).
+	loop(Patients, Disease).
 
 print_patient_state(Name, Health) ->
 	Msg = string:concat(string:concat(Name, " is "), Health),
@@ -41,10 +43,42 @@ print_all_patients([A | B]) ->
 						A ! print, 
 						print_all_patients(B).
 
+find_coord( [], _, _, _, _) -> ok;
+find_coord( [{PID, Coord} | Tail], PID, Health, Patients, Disease) ->
+	spread_to_neighbors(Coord, Health, Patients, Disease);
+find_coord( [_Head | Tail], PID, Health, Patients, Disease) ->
+	find_coord(Tail, PID, Health, Patients, Disease).
+
+spread_to_neighbors(_, _, [], _) -> ok;
+spread_to_neighbors(Coord1, Health, [{PID, Coord2} | Tail], Disease) ->
+	if 
+		is_neighbor(Coord1, Coord2) -> infect(PID, Health, Disease) 
+	end,
+	spread_to_neighbors(Coord1, Health, Tail, Disease).
+
+
+infect(PID, Health, Disease) -> 
+	Treshold = case Health of 
+					clean -> 0;
+					dormant -> 0.2;
+					sick -> 0.4;
+					terminal -> 0.7;
+					dead -> 0
+				end,
+	Rnd = random:uniform(),
+	if 
+		Rnd < Treshold -> 
+			Disease ! {new_infected, PID},
+			PID ! sick
+	end.
+
+is_neighbor({X, Y}, {X2, Y2}) ->
+	erlang:abs(X2 - X) =< 1 and erlang:abs(Y2 - Y) =< 1.		
+
 run() ->
 	start(4, 
 		["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"],
-		["", "", "", ""],
+		[clean, dormant, clean, clean],
 		[0, 0, 0, 0],
 		{"E-Bola", 5, 0.5}
 	).
