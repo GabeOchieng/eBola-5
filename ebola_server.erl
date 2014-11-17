@@ -79,6 +79,6 @@ run() ->
 	start(4, 
 		["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"],
 		[clean, dormant, clean, clean],
-		[0, 0, 0, 0],
+		[{0, 0}, {1, 0}, {0, 1}, {1, 1}],
 		{"E-Bola", 5, 0.5}
 	).
