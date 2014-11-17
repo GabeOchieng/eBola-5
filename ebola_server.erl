@@ -1,12 +1,12 @@
 -module(ebola_server).
--export([start/5, loop/1, print_all_patients/1, run/0]).
+-export([start/5, loop/2, print_all_patients/1, run/0]).
 
 % Creates a list of Patient PIDs and spawns the server loop.
 % Takes in number of patients, a list of names and a list of their current health status
 % Coordinates is a tuple of {X, Y}.
 start(NumPatients, Names, Health, Coordinates, {DiseaseName, Tick_time, Strength}) ->
 	Patients = make_patients(NumPatients, Names, Health, Coordinates),
-	Disease = spawn(disease, start, [ [DiseaseName, Patients, {Tick_time, Strength}] ])
+	Disease = spawn(disease, start, [ [DiseaseName, Patients, {Tick_time, Strength}] ]),
 	Server = spawn(ebola_server, loop, [Patients, Disease]),
 	send_server_to_patients(Patients, Server).
 
@@ -15,6 +15,8 @@ make_patients(0, _X, _Y, _Z) -> [];
 make_patients(NumPatients, [A | B], [C | D], [E | F]) -> 
 		% Note: Patient himself doesn't need to know his location. Server deals with that.
 		[ {spawn(patient, start, [{A, C}]), E} | make_patients(NumPatients - 1, B, D, F)].
+
+is_neighbor({X, Y}, {X2, Y2}) -> (abs(X2 - X) =< 1) and (abs(Y2 - Y) =< 1).	
 
 % Server loop.
 loop(Patients, Disease) ->
@@ -51,8 +53,9 @@ find_coord( [_Head | Tail], PID, Health, Patients, Disease) ->
 
 spread_to_neighbors(_, _, [], _) -> ok;
 spread_to_neighbors(Coord1, Health, [{PID, Coord2} | Tail], Disease) ->
-	if 
-		is_neighbor(Coord1, Coord2) -> infect(PID, Health, Disease) 
+	case is_neighbor(Coord1, Coord2) of
+		true -> infect(PID, Health, Disease);
+		_ -> ok
 	end,
 	spread_to_neighbors(Coord1, Health, Tail, Disease).
 
@@ -70,10 +73,7 @@ infect(PID, Health, Disease) ->
 		Rnd < Treshold -> 
 			Disease ! {new_infected, PID},
 			PID ! sick
-	end.
-
-is_neighbor({X, Y}, {X2, Y2}) ->
-	erlang:abs(X2 - X) =< 1 and erlang:abs(Y2 - Y) =< 1.		
+	end.	
 
 run() ->
 	start(4, 
