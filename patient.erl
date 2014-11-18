@@ -1,54 +1,87 @@
 -module(patient).
--export([start/1, loop/1, spread_disease/2]).
+-export([start/4, loop/4, spread_disease/2]).
 
 % Start the loop
-start({Name, Health}) -> 
+start(Name, Health, Tick_time, Disease_Strength) -> 
 	receive
 		{server, Server} ->
-			{ok, Tref} = timer:apply_interval( (5 * 1000), patient, spread_disease, [ Health, Server ]), 
-			loop({Name, Health, Server, Tref})
+			
+			% Set time interval to repeatededly send spread message to server.
+			{ok, Tref} = timer:apply_interval((Tick_time * 1000), patient, spread_disease, [Health, Server]), 
+
+			%Set interval to send myself a sick message
+			{ok, Tref2} = timer:apply_after(8000, patient, send_sick_message, [Disease_Strength]),
+
+			% Go into main loop
+			loop(Name, Health, Server, Tref)
 	end.
 
 % Continuously loop 
-loop({Name, Health, Server, Tref}) ->
-	%receive
-	%	print 		-> io:fwrite(string:concat(Name, ": Sup Bros!~n"))
-	%after 0      -> timeout
-	%end,
-
-	%NewHealth = sick(),
-
-	%Server ! {Name, Health},
-
-	%timer:apply_after(5000, patient, loop, [{Name, NewHealth, Server}]).
-
+loop(Name, Health, Server, Tref) ->
 	receive 
+
+		% Send when a sick neighbor has infected me
 		infect   -> 
 			case Health of
+
+				% Only effects me if I wasn't sick already.
 				clean ->
-					Server ! {state_change, Name, dormant}, 
+
+					%Send state change to server and start spreading disease
+					New_Health = dormant,
+					Server ! {state_change, Name, New_Health}, 
+
 					% Cancel old Tref, generate new Tref with new state.
-					loop({Name, dormant, Server, Tref});
+					timer:cancel(Tref),
+					{ok, New_Tref} = timer:apply_interval(5000, patient, spread_disease, [New_Health, Server]),
+					
+					loop(Name, New_Health, Server, New_Tref);
+
+
 				_     -> 
-					loop({Name, Health, Server, Tref})
+					loop(Name, Health, Server, Tref)
 			end;
-		sick 	 -> 
-			New_Health = change_state(Health),
-			Server ! {state_change, Name, New_Health},
-			% Must cancel old Tref and start new Tref.
-			loop({Name, New_Health, Server, Tref});
-		healthy  -> 
-			%Server ! {Name, "healthy"},
-			loop({Name, Health, Server, Tref})
+
+		% Patient sent this message to itself, needs to check if it gets sicker	
+		sick -> 
+
+			case Health of 
+
+				% Nothing happens
+				clean -> loop(Name, Health, Server, Tref);
+
+				% Potentially change your state, notify server.
+				_ -> 
+					New_Health = change_state(Health),
+					Server ! {state_change, Name, New_Health},
+					timer:cancel(Tref),
+					{ok, New_Tref} = timer:apply_interval(5000, patient, spread_disease, [New_Health, Server]),
+					loop(Name, New_Health, Server, New_Tref);
+
+		%Shouldn't happen.
+		_ -> loop(Name, Health, Server, Tref)
 	end.
 
+% Currently just updates to next state, later should use
+% random number generator to potentially do it.
 change_state(Health) -> 
+	%Rnd = random:uniform(),
 	case Health of
-		clean -> dormant;
 		dormant -> sick;
 		sick -> terminal;
 		terminal -> dead
 	end.
 
+% Self explanatory, possibly sends a sick message
+send_sick_message(Strength) -> 
+	Rnd = random:uniform(),
+	if 
+		Rnd < Strength -> self() ! sick 
+	end.
+
+% Tell the server to infect others if you're sick.
 spread_disease(Health, Server) ->
-	Server ! {spread, self(), Health}.
+	case Health of
+		clean -> ok;
+		_ -> Server ! {spread, self(), Health}
+	end.

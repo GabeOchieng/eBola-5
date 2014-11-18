@@ -1,40 +1,40 @@
 -module(ebola_server).
--export([start/4, loop/2, print_all_patients/1, run/0]).
+-export([start/4, loop/1, print_all_patients/1, run/0]).
 
 % Creates a list of Patient PIDs and spawns the server loop.
 % Takes in number of patients, a list of names and a list of their current health status
 % Coordinates is a tuple of {X, Y}.
-start(Names, Health, Coordinates, {DiseaseName, Tick_time, Strength}) ->
-	Patients = make_patients(Names, Health, Coordinates),
-	Disease = spawn(disease, start, [DiseaseName, Patients, {Tick_time, Strength}]),
-	Server = spawn(ebola_server, loop, [Patients, Disease]),
+start(Names, Health, Coordinates, {Tick_time, Disease_Strength}) ->
+	Patients = make_patients(Names, Health, Coordinates, Tick_time, Disease_Strength),
+	Server = spawn(ebola_server, loop, [Patients]),
 	send_server_to_patients(Patients, Server).
 
 % Creates a list of tuple of {PIDs, Coordinate} of the patients.
-make_patients([], [], []) -> [];
-make_patients([Name | NTail], [Health | HTail], [Coord | CTail]) -> 
+make_patients([], [], [], _, _) -> [];
+make_patients([Name | NTail], [Health | HTail], [Coord | CTail], Tick_time, Disease_Strength) -> 
 		% Note: Patient himself doesn't need to know his location. Server deals with that.
-		[ {spawn(patient, start, [{Name, Health}]), Coord} | make_patients(NTail, HTail, CTail)].
+		[ {spawn(patient, start, [Name, Health, Tick_time, Disease_Strength]), Coord} | make_patients(NTail, HTail, CTail, Tick_time, Disease_Strength)].
 
 is_neighbor({X, Y}, {X2, Y2}) -> (abs(X2 - X) =< 1) and (abs(Y2 - Y) =< 1).	
 
 % Server loop.
-loop(Patients, Disease) ->
+loop(Patients) ->
 	 %print_all_patients(Patients),
 	 %timer:apply_after(5000, ebola_server, loop, [Patients]).
 
 	receive
 		{state_change, Name, Health} -> print_patient_state(Name, Health); % Produce new Patients list with changed state.
-		{spread, PID, Health} 		 -> find_coord(Patients, PID, Health, Patients, Disease) % Need to find neighbors here.
+		{spread, PID, Health} 		 -> find_coord(Patients, PID, Health, Patients) % Need to find neighbors here.
 		% true 			 	-> print_patient_state("Fuckface", "sick")
 	after 0      			-> timeout
 	end,
 
-	loop(Patients, Disease).
+	loop(Patients).
 
-print_patient_state(Name, Health) ->
-	Msg = string:concat(string:concat(Name, " is "), Health),
-	io:fwrite(string:concat(Msg, "~n")).
+%%This is very broken, not sure why yet. Full version ends up exiting with an error.
+print_patient_state(_Name, _Health) -> io:fwrite("Hello").
+	%Msg = string:concat(string:concat(Name, " is "), Health),
+	%io:fwrite(string:concat(Msg, "~n")).
 
 send_server_to_patients([{PID, _} | []], Server) -> PID ! {server, Server};
 send_server_to_patients([{PID, _} | Tail], Server) -> PID ! {server, Server}, send_server_to_patients(Tail, Server).
@@ -61,7 +61,7 @@ spread_to_neighbors(Coord1, Health, [{PID, Coord2} | Tail], Disease) ->
 
 
 infect(PID, Health, Disease) -> 
-	Treshold = case Health of 
+	Threshold = case Health of 
 					clean -> 0;
 					dormant -> 0.2;
 					sick -> 0.4;
@@ -70,7 +70,7 @@ infect(PID, Health, Disease) ->
 				end,
 	Rnd = random:uniform(),
 	if 
-		Rnd < Treshold -> 
+		Rnd < Threshold -> 
 			Disease ! {new_infected, PID},
 			PID ! sick
 	end.	
@@ -80,5 +80,5 @@ run() ->
 		["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"],
 		[clean, dormant, clean, clean],
 		[{0, 0}, {1, 0}, {0, 1}, {1, 1}],
-		{"E-Bola", 5, 0.5}
+		{5, 0.5}
 	).

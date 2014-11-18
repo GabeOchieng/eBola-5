@@ -25,9 +25,9 @@ loop(Name, Patients, Tref, {Tick_time, Strength}) ->
 infect([], _) -> ok;
 infect([{PID , _} | Tail], Strength) ->
 	Rnd = random:uniform(),
-	if 
-		Rnd < Strength -> PID ! sick;
-		true -> PID ! healthy
+	case Rnd < Strength of
+		true -> PID ! sick;
+		false -> PID ! healthy
 	end,
 	infect(Tail, Strength).
 
