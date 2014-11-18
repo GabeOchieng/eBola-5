@@ -17,7 +17,7 @@ loop(Name, Patients, Tref, {Tick_time, Strength}) ->
 			% Need to check for duplicates in the list.
 			timer:cancel(Tref),
 			{ok, New_Tref} = timer:apply_interval(Tick_time, disease, infect, [ [PID | Patients], Strength]),
-			loop([Name, [PID | Patients], New_Tref, {Tick_time, Strength}])
+			loop(Name, [PID | Patients], New_Tref, {Tick_time, Strength})
 	end.
 
 %Attempts to infect a patient.
