@@ -1,17 +1,17 @@
 -module(disease).
--export([start/1, loop/1, infect/2]).
+-export([start/3, loop/4, infect/2]).
 
 % Properties is a tuple of disease properties.
 % Patients is list of PIDs of sick patient processes.
 % Tick time is how often the disease should trigger
 % Strength is between 0 and 1, likelihood of catching disease.
-start([Name, Patients, {Tick_time, Strength}]) ->
+start(Name, Patients, {Tick_time, Strength}) ->
 	{ok, Tref} = timer:apply_interval( (Tick_time * 1000), disease, infect, [Patients, Strength]),
-	loop([Name, Patients, Tref, {Tick_time, Strength}]).
+	loop(Name, Patients, Tref, {Tick_time, Strength}).
 
 % Tref will be used to stop the apply_interval when we need to update the list of
 % infected patients!
-loop([Name, Patients, Tref, {Tick_time, Strength}]) ->
+loop(Name, Patients, Tref, {Tick_time, Strength}) ->
 	receive
 		{new_infected, PID} -> 
 			% Need to check for duplicates in the list.

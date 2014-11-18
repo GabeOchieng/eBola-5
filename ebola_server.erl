@@ -6,7 +6,7 @@
 % Coordinates is a tuple of {X, Y}.
 start(Names, Health, Coordinates, {DiseaseName, Tick_time, Strength}) ->
 	Patients = make_patients(Names, Health, Coordinates),
-	Disease = spawn(disease, start, [ [DiseaseName, Patients, {Tick_time, Strength}] ]),
+	Disease = spawn(disease, start, [DiseaseName, Patients, {Tick_time, Strength}]),
 	Server = spawn(ebola_server, loop, [Patients, Disease]),
 	send_server_to_patients(Patients, Server).
 
