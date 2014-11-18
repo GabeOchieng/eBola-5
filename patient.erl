@@ -1,5 +1,5 @@
 -module(patient).
--export([start/4, loop/4, spread_disease/2]).
+-export([start/4, loop/4, spread_disease/2, send_sick_message/1]).
 
 % Start the loop
 start(Name, Health, Tick_time, Disease_Strength) -> 
@@ -62,19 +62,19 @@ loop(Name, Health, Server, Tref) ->
 		_ -> loop(Name, Health, Server, Tref)
 	end.
 
+% Self explanatory, possibly sends a sick message
+send_sick_message(Strength) -> 
+	Rnd = random:uniform(),
+	if 
+		Rnd < Strength -> self() ! sick 
+	end.
+
 %Update your sickness
 change_state(Health) -> 
 	case Health of
 		dormant -> sick;
 		sick -> terminal;
 		terminal -> dead
-	end.
-
-% Self explanatory, possibly sends a sick message
-send_sick_message(Strength) -> 
-	Rnd = random:uniform(),
-	if 
-		Rnd < Strength -> self() ! sick 
 	end.
 
 % Tell the server to infect others if you're sick.
