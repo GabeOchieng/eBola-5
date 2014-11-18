@@ -6,7 +6,7 @@
 % Tick time is how often the disease should trigger
 % Strength is between 0 and 1, likelihood of catching disease.
 start([Name, Patients, {Tick_time, Strength}]) ->
-	{ok, Tref} = timer:apply_interval( (Tick_time * 1000), disease, infect, [ [Patients, Strength] ]),
+	{ok, Tref} = timer:apply_interval( (Tick_time * 1000), disease, infect, [Patients, Strength]),
 	loop([Name, Patients, Tref, {Tick_time, Strength}]).
 
 % Tref will be used to stop the apply_interval when we need to update the list of
@@ -22,14 +22,14 @@ loop([Name, Patients, Tref, {Tick_time, Strength}]) ->
 
 %Attempts to infect a patient.
 % BUG: can't reseed...
-infect([ [], _]) -> ok;
-infect([ [ {PID , _} | Tail], Strength]) ->
+infect([], _) -> ok;
+infect([{PID , _} | Tail], Strength) ->
 	Rnd = random:uniform(),
 	if 
 		Rnd < Strength -> PID ! sick;
 		true -> PID ! healthy
 	end,
-	infect( [Tail, Strength]).
+	infect(Tail, Strength).
 
 
 

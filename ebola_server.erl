@@ -1,20 +1,20 @@
 -module(ebola_server).
--export([start/5, loop/2, print_all_patients/1, run/0]).
+-export([start/4, loop/2, print_all_patients/1, run/0]).
 
 % Creates a list of Patient PIDs and spawns the server loop.
 % Takes in number of patients, a list of names and a list of their current health status
 % Coordinates is a tuple of {X, Y}.
-start(NumPatients, Names, Health, Coordinates, {DiseaseName, Tick_time, Strength}) ->
-	Patients = make_patients(NumPatients, Names, Health, Coordinates),
+start(Names, Health, Coordinates, {DiseaseName, Tick_time, Strength}) ->
+	Patients = make_patients(Names, Health, Coordinates),
 	Disease = spawn(disease, start, [ [DiseaseName, Patients, {Tick_time, Strength}] ]),
 	Server = spawn(ebola_server, loop, [Patients, Disease]),
 	send_server_to_patients(Patients, Server).
 
 % Creates a list of tuple of {PIDs, Coordinate} of the patients.
-make_patients(0, _, _, _) -> [];
-make_patients(NumPatients, [Name | NTail], [Health | HTail], [Coord | CTail]) -> 
+make_patients([], [], []) -> [];
+make_patients([Name | NTail], [Health | HTail], [Coord | CTail]) -> 
 		% Note: Patient himself doesn't need to know his location. Server deals with that.
-		[ {spawn(patient, start, [{Name, Health}]), Coord} | make_patients(NumPatients - 1, NTail, HTail, CTail)].
+		[ {spawn(patient, start, [{Name, Health}]), Coord} | make_patients(NTail, HTail, CTail)].
 
 is_neighbor({X, Y}, {X2, Y2}) -> (abs(X2 - X) =< 1) and (abs(Y2 - Y) =< 1).	
 
@@ -76,7 +76,7 @@ infect(PID, Health, Disease) ->
 	end.	
 
 run() ->
-	start(4, 
+	start(
 		["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"],
 		[clean, dormant, clean, clean],
 		[{0, 0}, {1, 0}, {0, 1}, {1, 1}],
