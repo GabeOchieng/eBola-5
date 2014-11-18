@@ -5,7 +5,7 @@
 start({Name, Health}) -> 
 	receive
 		{server, Server} ->
-			Tref = timer:apply_interval( (5 * 1000), patient, spread_disease, [ Health, Server ]), 
+			{ok, Tref} = timer:apply_interval( (5 * 1000), patient, spread_disease, [ Health, Server ]), 
 			loop({Name, Health, Server, Tref})
 	end.
 
