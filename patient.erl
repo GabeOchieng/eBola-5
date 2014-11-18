@@ -10,7 +10,7 @@ start(Name, Health, Tick_time, Disease_Strength) ->
 			{ok, Tref} = timer:apply_interval((Tick_time * 1000), patient, spread_disease, [Health, Server]), 
 
 			%Set interval to send myself a sick message
-			{ok, Tref2} = timer:apply_after(8000, patient, send_sick_message, [Disease_Strength]),
+			{ok, _Tref2} = timer:apply_interval(8000, patient, send_sick_message, [Disease_Strength]),
 
 			% Go into main loop
 			loop(Name, Health, Server, Tref)
@@ -21,7 +21,7 @@ loop(Name, Health, Server, Tref) ->
 	receive 
 
 		% Send when a sick neighbor has infected me
-		infect   -> 
+		infect -> 
 			case Health of
 
 				% Only effects me if I wasn't sick already.
@@ -38,8 +38,7 @@ loop(Name, Health, Server, Tref) ->
 					loop(Name, New_Health, Server, New_Tref);
 
 
-				_     -> 
-					loop(Name, Health, Server, Tref)
+				_ -> loop(Name, Health, Server, Tref)
 			end;
 
 		% Patient sent this message to itself, needs to check if it gets sicker	
@@ -56,16 +55,15 @@ loop(Name, Health, Server, Tref) ->
 					Server ! {state_change, Name, New_Health},
 					timer:cancel(Tref),
 					{ok, New_Tref} = timer:apply_interval(5000, patient, spread_disease, [New_Health, Server]),
-					loop(Name, New_Health, Server, New_Tref);
+					loop(Name, New_Health, Server, New_Tref)
+			end;
 
 		%Shouldn't happen.
 		_ -> loop(Name, Health, Server, Tref)
 	end.
 
-% Currently just updates to next state, later should use
-% random number generator to potentially do it.
+%Update your sickness
 change_state(Health) -> 
-	%Rnd = random:uniform(),
 	case Health of
 		dormant -> sick;
 		sick -> terminal;

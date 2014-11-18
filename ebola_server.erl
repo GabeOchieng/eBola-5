@@ -45,22 +45,22 @@ print_all_patients([A | B]) ->
 						A ! print, 
 						print_all_patients(B).
 
-find_coord( [], _, _, _, _) -> ok;
-find_coord( [{PID, Coord} | _Tail], PID, Health, Patients, Disease) ->
-	spread_to_neighbors(Coord, Health, Patients, Disease);
-find_coord( [_Head | Tail], PID, Health, Patients, Disease) ->
-	find_coord(Tail, PID, Health, Patients, Disease).
+find_coord( [], _, _, _) -> ok;
+find_coord( [{PID, Coord} | _Tail], PID, Health, Patients) ->
+	spread_to_neighbors(Coord, Health, Patients);
+find_coord( [_Head | Tail], PID, Health, Patients) ->
+	find_coord(Tail, PID, Health, Patients).
 
-spread_to_neighbors(_, _, [], _) -> ok;
-spread_to_neighbors(Coord1, Health, [{PID, Coord2} | Tail], Disease) ->
+spread_to_neighbors(_, _, []) -> ok;
+spread_to_neighbors(Coord1, Health, [{PID, Coord2} | Tail]) ->
 	case is_neighbor(Coord1, Coord2) of
-		true -> infect(PID, Health, Disease);
+		true -> infect(PID, Health);
 		_ -> ok
 	end,
-	spread_to_neighbors(Coord1, Health, Tail, Disease).
+	spread_to_neighbors(Coord1, Health, Tail).
 
 
-infect(PID, Health, Disease) -> 
+infect(PID, Health) -> 
 	Threshold = case Health of 
 					clean -> 0;
 					dormant -> 0.2;
@@ -71,8 +71,7 @@ infect(PID, Health, Disease) ->
 	Rnd = random:uniform(),
 	if 
 		Rnd < Threshold -> 
-			Disease ! {new_infected, PID},
-			PID ! sick
+			PID ! infect
 	end.	
 
 run() ->
