@@ -1,5 +1,5 @@
 -module(disease).
--export([start/1, loop/1, infect/1]).
+-export([start/1, loop/1, infect/2]).
 
 % Properties is a tuple of disease properties.
 % Patients is list of PIDs of sick patient processes.

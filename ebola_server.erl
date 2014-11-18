@@ -46,7 +46,7 @@ print_all_patients([A | B]) ->
 						print_all_patients(B).
 
 find_coord( [], _, _, _, _) -> ok;
-find_coord( [{PID, Coord} | Tail], PID, Health, Patients, Disease) ->
+find_coord( [{PID, Coord} | _Tail], PID, Health, Patients, Disease) ->
 	spread_to_neighbors(Coord, Health, Patients, Disease);
 find_coord( [_Head | Tail], PID, Health, Patients, Disease) ->
 	find_coord(Tail, PID, Health, Patients, Disease).
