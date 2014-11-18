@@ -11,10 +11,10 @@ start(NumPatients, Names, Health, Coordinates, {DiseaseName, Tick_time, Strength
 	send_server_to_patients(Patients, Server).
 
 % Creates a list of tuple of {PIDs, Coordinate} of the patients.
-make_patients(0, _X, _Y, _Z) -> [];
-make_patients(NumPatients, [A | B], [C | D], [E | F]) -> 
+make_patients(0, _, _, _) -> [];
+make_patients(NumPatients, [Name | NTail], [Health | HTail], [Coord | CTail]) -> 
 		% Note: Patient himself doesn't need to know his location. Server deals with that.
-		[ {spawn(patient, start, [{A, C}]), E} | make_patients(NumPatients - 1, B, D, F)].
+		[ {spawn(patient, start, [{Name, Health}]), Coord} | make_patients(NumPatients - 1, NTail, HTail, CTail)].
 
 is_neighbor({X, Y}, {X2, Y2}) -> (abs(X2 - X) =< 1) and (abs(Y2 - Y) =< 1).	
 
@@ -37,7 +37,7 @@ print_patient_state(Name, Health) ->
 	io:fwrite(string:concat(Msg, "~n")).
 
 send_server_to_patients([{PID, _} | []], Server) -> PID ! {server, Server};
-send_server_to_patients([{PID, _} | B], Server) -> PID ! {server, Server}, send_server_to_patients(B, Server).
+send_server_to_patients([{PID, _} | Tail], Server) -> PID ! {server, Server}, send_server_to_patients(Tail, Server).
 
 % Send a 'print' message to all the patients.
 print_all_patients([A | [] ]) -> A ! print;
