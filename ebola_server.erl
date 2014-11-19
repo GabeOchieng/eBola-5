@@ -1,5 +1,5 @@
 -module(ebola_server).
--export([start/4, loop/1, print_all_patients/1, run/0]).
+-export([start_simulation/0, start/4, loop/1, print_all_patients/1]).
 
 % Creates a list of Patient PIDs and spawns the server loop.
 % Takes in number of patients, a list of names and a list of their current health status
@@ -7,7 +7,7 @@
 start(Names, Health, Coordinates, {Tick_time, Disease_Strength}) ->
 	Patients = make_patients(Names, Health, Coordinates, Tick_time, Disease_Strength),
 	Server = spawn(ebola_server, loop, [Patients]),
-	send_server_to_patients(Patients, Server),
+	send_server_to_patients(Patients, Server).
 
 % Creates a list of tuple of {PIDs, Coordinate} of the patients.
 make_patients([], [], [], _, _) -> [];
@@ -74,10 +74,14 @@ infect(PID, Health) ->
 			PID ! infect
 	end.	
 
-run() ->
-	start(
-		["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"],
-		[clean, dormant, clean, clean],
-		[{0, 0}, {1, 0}, {0, 1}, {1, 1}],
-		{5, 0.5}
-	).
+start_simulation() ->
+    {ok, P} = python:start(),
+    python:call(P, ebola, run, [self()]),
+    wait_for_settings(P).
+
+wait_for_settings(_PythonInstance) ->
+	receive
+		{initial_settings, Names, Health, Coordinates, {Tick_time, Disease_Strength}} -> start(Names, Health, Coordinates, {Tick_time, Disease_Strength});
+		_ -> io:fwrite("Got a message")
+
+	end.
