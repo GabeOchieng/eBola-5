@@ -7,7 +7,7 @@
 start(Names, Health, Coordinates, {Tick_time, Disease_Strength}) ->
 	Patients = make_patients(Names, Health, Coordinates, Tick_time, Disease_Strength),
 	Server = spawn(ebola_server, loop, [Patients]),
-	send_server_to_patients(Patients, Server).
+	send_server_to_patients(Patients, Server),
 
 % Creates a list of tuple of {PIDs, Coordinate} of the patients.
 make_patients([], [], [], _, _) -> [];

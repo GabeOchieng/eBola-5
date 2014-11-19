@@ -5,6 +5,7 @@
 start(Name, Health, Tick_time, Disease_Strength) -> 
 	receive
 		{server, Server} ->
+			io:fwrite("Got message from server."),
 			
 			% Set time interval to repeatededly send spread message to server.
 			{ok, Tref} = timer:apply_interval((Tick_time * 1000), patient, spread_disease, [Health, Server]), 
