@@ -6,4 +6,4 @@ def run(ServerPID):
     Health = [Atom("clean"), Atom("dormant"), Atom("clean"), Atom("clean")]
     Coords = [(0, 0), (1, 0), (0, 1), (1, 1)]
     DiseaseParams = (5, .5)
-    cast(ServerPID, (Atom("initial_settings"), Names, Coords, DiseaseParams))
+    cast(ServerPID, (Atom("initial_settings"), Names, Health, Coords, DiseaseParams))
