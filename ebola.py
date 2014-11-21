@@ -9,7 +9,7 @@ def handler(message):
 def run(ServerPID):
     set_message_handler(handler)
     Names = ["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"]
-    Health = [Atom("clean"), Atom("dormant"), Atom("clean"), Atom("clean")]
+    Health = [Atom("dormant"), Atom("clean"), Atom("clean"), Atom("clean")]
     Coords = [(0, 0), (1, 0), (0, 1), (1, 1)]
-    DiseaseParams = (5, .5)
+    DiseaseParams = (1, .5)
     cast(ServerPID, (Atom("initial_settings"), Names, Health, Coords, DiseaseParams))

@@ -1,5 +1,5 @@
 -module(ebola_server).
--export([start_simulation/0, start/5, loop/2, print_all_patients/1]).
+-export([start_simulation/0, start/5, loop/2]).
 
 % Creates a list of Patient PIDs and spawns the server loop.
 % Takes in number of patients, a list of names and a list of their current health status
@@ -7,8 +7,8 @@
 start(PythonInstance, Names, Health, Coordinates, {Tick_time, Disease_Strength}) ->
 	Patients = make_patients(Names, Health, Coordinates, Tick_time, Disease_Strength),
 	Server = spawn(ebola_server, loop, [PythonInstance, Patients]),
-	send_server_to_patients(Patients, Server),
-	test_infect_patients(Patients).
+	send_server_to_patients(Patients, Server).
+	%test_infect_patients(Patients).
 
 % Creates a list of tuple of {PIDs, Coordinate} of the patients.
 make_patients([], [], [], _, _) -> [];
@@ -27,7 +27,7 @@ loop(PythonInstance, Patients) ->
 	 %timer:apply_after(5000, ebola_server, loop, [Patients]).
 
 	receive
-		{state_change, Name, Health} -> python:cast(PythonInstance, {state_change, Name, Health}), print_patient_state(Name, Health); % Produce new Patients list with changed state.
+		{state_change, Name, Health} -> python:cast(PythonInstance, {state_change, Name, Health}); % Produce new Patients list with changed state.
 		{spread, PID, Health} 		 -> find_coord(Patients, PID, Health, Patients) % Need to find neighbors here.
 		% true 			 	-> print_patient_state("Fuckface", "sick")
 	after 0      			-> timeout
@@ -35,25 +35,14 @@ loop(PythonInstance, Patients) ->
 
 	loop(PythonInstance, Patients).
 
-%%This is very broken, not sure why yet. Full version ends up exiting with an error.
-print_patient_state(_Name, _Health) -> io:fwrite("Hello").
-	%Msg = string:concat(string:concat(Name, " is "), Health),
-	%io:fwrite(string:concat(Msg, "~n")).
-
 send_server_to_patients([{PID, _} | []], Server) -> PID ! {server, Server};
 send_server_to_patients([{PID, _} | Tail], Server) -> PID ! {server, Server}, send_server_to_patients(Tail, Server).
 
-% Send a 'print' message to all the patients.
-print_all_patients([A | [] ]) -> A ! print;
-print_all_patients([A | B]) -> 
-						A ! print, 
-						print_all_patients(B).
-
 find_coord( [], _, _, _) -> ok;
-find_coord( [{PID, Coord} | _Tail], PID, Health, Patients) ->
-	spread_to_neighbors(Coord, Health, Patients);
-find_coord( [_Head | Tail], PID, Health, Patients) ->
-	find_coord(Tail, PID, Health, Patients).
+
+find_coord( [{PID, Coord} | _Tail], PID, Health, Patients) -> spread_to_neighbors(Coord, Health, Patients);
+
+find_coord( [_Head | Tail], PID, Health, Patients) -> find_coord(Tail, PID, Health, Patients).
 
 spread_to_neighbors(_, _, []) -> ok;
 spread_to_neighbors(Coord1, Health, [{PID, Coord2} | Tail]) ->
@@ -64,19 +53,19 @@ spread_to_neighbors(Coord1, Health, [{PID, Coord2} | Tail]) ->
 	spread_to_neighbors(Coord1, Health, Tail).
 
 
-infect(PID, Health) -> 
-	Threshold = case Health of 
-					clean -> 0;
-					dormant -> 0.2;
-					sick -> 0.4;
-					terminal -> 0.7;
-					dead -> 0
-				end,
-	Rnd = random:uniform(),
-	if 
-		Rnd < Threshold -> 
-			PID ! infect
-	end.	
+infect(PID, Health) -> PID ! infect. 
+	%Threshold = case Health of 
+	%				clean -> 0;
+	%				dormant -> 0.2;
+	%				sick -> 0.4;
+	%				terminal -> 0.7;
+	%				dead -> 0
+	%			end,
+	%Rnd = random:uniform(),
+	%if 
+	%	Rnd < Threshold -> 
+	%		PID ! infect
+	%end.	
 
 start_simulation() ->
     {ok, P} = python:start(),
