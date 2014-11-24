@@ -171,16 +171,8 @@ class Button():
 
     def clicked(self):
         if (self.outline.collidepoint(pygame.mouse.get_pos())):
-            """(Names, Coords, Health) = map.getInfo()
+            (Names, Coords, Health) = map.getInfo()
             DiseaseParams = (5, self.strength.getVal())
-            t = open("t", "w")
-            t.write(str(Names))
-            t.write(str(Health))
-            t.write(str(Coords))"""
-            Names = ["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"]
-            Health = [Atom("dormant"), Atom("clean"), Atom("clean"), Atom("clean")]
-            Coords = [(0, 0), (1, 0), (0, 1), (1, 1)]
-            DiseaseParams = (1, .5)
             cast(self.ServerPID, (Atom("initial_settings"), Names, Health, Coords, DiseaseParams))
             self.outline = pygame.Rect(0,0,0,0)
             self.text = ""

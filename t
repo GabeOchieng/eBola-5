@@ -1,1 +1,0 @@
-['n', 'r', 's'][Atom('terminal'), Atom('clean'), Atom('dormant')][(292, 213), (213, 292), (292, 292)]
