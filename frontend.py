@@ -1,8 +1,9 @@
-
 import sys, getopt
 import random
 import pygame
 import eztext
+from erlport.erlterms import Atom
+from erlport.erlang import call, cast, set_message_handler
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -10,6 +11,58 @@ RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
+
+class Patient():
+
+    def __init__(self, x, y, i, j, width, height, name):
+        self.coords = (i, j)
+        self.outline = pygame.Rect(x, y, width, height)
+        self.state = 0 
+        self.name = name
+        # 0 is clean, 1 is dormant, 2 is sick, 3 is terminal, 4 is dead.
+
+    def draw(self, screen):
+        color = WHITE
+        if (self.state == 1):
+            color = BLACK
+        elif (self.state == 2):
+            color = RED
+        elif (self.state == 3):
+            color = BLUE
+        elif (self.state == 4):
+            color = GREEN
+        elif (self.state == 5):
+            color = YELLOW
+
+        pygame.draw.rect(screen, color, self.outline, 0)
+
+    def clicked(self):
+        if (self.outline.collidepoint(pygame.mouse.get_pos())): 
+            self.state = (self.state + 1) % 6
+
+    def getInfo(self):
+        if self.state != 0:
+            return (self.getName(), self.getCoords(), self.getHealth())
+        else:
+            return None
+
+    def getName(self):
+        return self.name
+
+    def getCoords(self):
+        return self.coords
+
+    def getHealth(self):
+        if (self.state == 1):
+            return Atom("clean")
+        elif (self.state == 2):
+            return Atom("dormant")
+        elif (self.state == 3):
+            return Atom("sick")
+        elif (self.state == 4):
+            return Atom("terminal")
+        elif (self.state == 5):
+            return Atom("dead")
 
 class Map():
     # Will contain the array of "patients".
@@ -26,13 +79,15 @@ class Map():
         cur_patient_x = self.offset
         cur_patient_y = self.offset
 
+        Letter = 'a'
+
         for i in range(0, 5):
             for j in range (0, 5):
-                self.patients.append(Patient(x + cur_patient_x, y + cur_patient_y, patient_width, patient_height))
+                self.patients.append(Patient(x + cur_patient_x, y + cur_patient_y, i, j, patient_width, patient_height, Letter))
+                Letter = chr(ord(Letter) + 1)
                 cur_patient_x = cur_patient_x + (self.offset + patient_width)
             cur_patient_x = self.offset
-            cur_patient_y = cur_patient_y + (self.offset + patient_height)
-                
+            cur_patient_y = cur_patient_y + (self.offset + patient_height)              
 
     def draw(self, screen):
         pygame.draw.rect(screen, BLACK, self.outline, 1)
@@ -43,29 +98,28 @@ class Map():
         for patient in self.patients:
             patient.clicked()
 
-class Patient():
+    def getInfo(self):
+        Names = []
+        Coords = []
+        Health = []
+        for patient in self.patients:
+            Info = patient.getInfo()
+            if Info != None:
+                (Name, Coord, PHealth) = Info
+                Names.append(Name)
+                Coords.append(Coord)
+                Health.append(PHealth)
 
-    def __init__(self, x, y, width, height):
-        self.outline = pygame.Rect(x, y, width, height)
-        self.state = 0 
-        # 0 is clean, 1 is dormant, 2 is sick, 3 is terminal, 4 is dead.
+        return (Names, Coords, Health)
 
-    def draw(self, screen):
-        color = BLACK
-        if (self.state == 1):
-            color = RED
-        elif (self.state == 2):
-            color = BLUE
-        elif (self.state == 3):
-            color = GREEN
-        elif (self.state == 4):
-            color = YELLOW
+#Global bc handler for ErlPort exists at the module level.
+map = Map(50, 50, 400, 400)
 
-        pygame.draw.rect(screen, color, self.outline, 0)
+def handler(message):
+    f = open('messages', 'a')
+    f.write(str(message))
 
-    def clicked(self):
-        if (self.outline.collidepoint(pygame.mouse.get_pos())): 
-            self.state = (self.state + 1) % 5
+set_message_handler(handler)
 
 class TextBox():
     def __init__(self, x, y, prompt):
@@ -93,8 +147,12 @@ class TextBox():
             self.focus = False
             self.width = 1
 
+    # need to know how to get value out of the real textboxes
+    def getVal(self):
+        return .5
+
 class Button():
-    def __init__(self, x, y, width, height, text, func):
+    def __init__(self, x, y, width, height, text, map, ticktime, strength, ServerPID):
         self.x = x
         self.y = y
         self.width = width
@@ -102,7 +160,9 @@ class Button():
         self.outline = pygame.Rect(x, y, width, height)
         self.font = pygame.font.SysFont("monospace", 15)
         self.text = text
-        self.func = func
+        self.strength = strength
+        self.ticktime = ticktime
+        self.ServerPID = ServerPID
 
     def draw(self, screen):
         pygame.draw.rect(screen, BLACK, self.outline, 0)
@@ -111,20 +171,31 @@ class Button():
 
     def clicked(self):
         if (self.outline.collidepoint(pygame.mouse.get_pos())):
-            self.func() #Supposedly this would talk to the backend to start the simulation
+            """(Names, Coords, Health) = map.getInfo()
+            DiseaseParams = (5, self.strength.getVal())
+            t = open("t", "w")
+            t.write(str(Names))
+            t.write(str(Health))
+            t.write(str(Coords))"""
+            Names = ["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"]
+            Health = [Atom("dormant"), Atom("clean"), Atom("clean"), Atom("clean")]
+            Coords = [(0, 0), (1, 0), (0, 1), (1, 1)]
+            DiseaseParams = (1, .5)
+            cast(self.ServerPID, (Atom("initial_settings"), Names, Health, Coords, DiseaseParams))
+            self.outline = pygame.Rect(0,0,0,0)
+            self.text = ""
+            #Supposedly this would talk to the backend to start the simulation
 
-def main():
+def main(ServerPID):
     pygame.init()
     screen = pygame.display.set_mode([700, 800])
 
     clock = pygame.time.Clock()
     done = False
 
-    map = Map(50, 50, 400, 400)
-
     ticktime = TextBox(485, 150, 'Tick time: ')
     strength = TextBox(485, 200, 'Strength: ')
-    button = Button(150, 500, 200, 40, "Run Simulation", test)
+    button = Button(150, 500, 200, 40, "Run Simulation", map, ticktime, strength, ServerPID)
 
     while not done:
         clock.tick(30)
@@ -156,9 +227,6 @@ def main():
         
 
     pygame.quit()
-
-def test():
-    return 5
 
 if __name__ == '__main__':
     main()

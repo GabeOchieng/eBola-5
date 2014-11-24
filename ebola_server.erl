@@ -1,5 +1,5 @@
 -module(ebola_server).
--export([start_simulation/0, start/5, loop/2]).
+-export([s/0, start/5, loop/2]).
 
 % Creates a list of Patient PIDs and spawns the server loop.
 % Takes in number of patients, a list of names and a list of their current health status
@@ -67,14 +67,14 @@ infect(PID, Health) -> PID ! infect.
 	%		PID ! infect
 	%end.	
 
-start_simulation() ->
-    {ok, P} = python:start(),
-    python:call(P, ebola, run, [self()]),
-    wait_for_settings(P).
+s() ->
+	{ok, P} = python:start(),
+	python:call(P, frontend, main, [self()]),
+	wait_for_settings(P).
 
 wait_for_settings(PythonInstance) ->
 	receive
-		{initial_settings, Names, Health, Coordinates, {Tick_time, Disease_Strength}} -> start(PythonInstance, Names, Health, Coordinates, {Tick_time, Disease_Strength});
+		{initial_settings, Names, Health, Coordinates, {Tick_time, Disease_Strength}} -> io:fwrite("Got message"), start(PythonInstance, Names, Health, Coordinates, {Tick_time, Disease_Strength});
 		_ -> io:fwrite("Got a message")
 
 	end.
