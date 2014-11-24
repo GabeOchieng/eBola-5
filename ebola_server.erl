@@ -1,84 +1,80 @@
 -module(ebola_server).
--export([start/4, loop/2, print_all_patients/1, run/0]).
+-export([start_simulation/0, start/5, loop/2]).
 
 % Creates a list of Patient PIDs and spawns the server loop.
 % Takes in number of patients, a list of names and a list of their current health status
 % Coordinates is a tuple of {X, Y}.
-start(Names, Health, Coordinates, {DiseaseName, Tick_time, Strength}) ->
-	Patients = make_patients(Names, Health, Coordinates),
-	Disease = spawn(disease, start, [DiseaseName, Patients, {Tick_time, Strength}]),
-	Server = spawn(ebola_server, loop, [Patients, Disease]),
+start(PythonInstance, Names, Health, Coordinates, {Tick_time, Disease_Strength}) ->
+	Patients = make_patients(Names, Health, Coordinates, Tick_time, Disease_Strength),
+	Server = spawn(ebola_server, loop, [PythonInstance, Patients]),
 	send_server_to_patients(Patients, Server).
+	%test_infect_patients(Patients).
 
 % Creates a list of tuple of {PIDs, Coordinate} of the patients.
-make_patients([], [], []) -> [];
-make_patients([Name | NTail], [Health | HTail], [Coord | CTail]) -> 
+make_patients([], [], [], _, _) -> [];
+make_patients([Name | NTail], [Health | HTail], [Coord | CTail], Tick_time, Disease_Strength) -> 
 		% Note: Patient himself doesn't need to know his location. Server deals with that.
-		[ {spawn(patient, start, [{Name, Health}]), Coord} | make_patients(NTail, HTail, CTail)].
+		[ {spawn(patient, start, [Name, Health, Tick_time, Disease_Strength]), Coord} | make_patients(NTail, HTail, CTail, Tick_time, Disease_Strength)].
 
 is_neighbor({X, Y}, {X2, Y2}) -> (abs(X2 - X) =< 1) and (abs(Y2 - Y) =< 1).	
 
+test_infect_patients([{PID, _} | []]) -> PID ! infect;
+test_infect_patients([{PID, _} | Tail]) -> PID ! infect, test_infect_patients(Tail).
+
 % Server loop.
-loop(Patients, Disease) ->
+loop(PythonInstance, Patients) ->
 	 %print_all_patients(Patients),
 	 %timer:apply_after(5000, ebola_server, loop, [Patients]).
 
 	receive
-		{state_change, Name, Health} -> print_patient_state(Name, Health); % Produce new Patients list with changed state.
-		{spread, PID, Health} 		 -> find_coord(Patients, PID, Health, Patients, Disease) % Need to find neighbors here.
+		{state_change, Name, Health} -> python:cast(PythonInstance, {state_change, Name, Health}); % Produce new Patients list with changed state.
+		{spread, PID, Health} 		 -> find_coord(Patients, PID, Health, Patients) % Need to find neighbors here.
 		% true 			 	-> print_patient_state("Fuckface", "sick")
 	after 0      			-> timeout
 	end,
 
-	loop(Patients, Disease).
-
-print_patient_state(Name, Health) ->
-	Msg = string:concat(string:concat(Name, " is "), Health),
-	io:fwrite(string:concat(Msg, "~n")).
+	loop(PythonInstance, Patients).
 
 send_server_to_patients([{PID, _} | []], Server) -> PID ! {server, Server};
 send_server_to_patients([{PID, _} | Tail], Server) -> PID ! {server, Server}, send_server_to_patients(Tail, Server).
 
-% Send a 'print' message to all the patients.
-print_all_patients([A | [] ]) -> A ! print;
-print_all_patients([A | B]) -> 
-						A ! print, 
-						print_all_patients(B).
+find_coord( [], _, _, _) -> ok;
 
-find_coord( [], _, _, _, _) -> ok;
-find_coord( [{PID, Coord} | _Tail], PID, Health, Patients, Disease) ->
-	spread_to_neighbors(Coord, Health, Patients, Disease);
-find_coord( [_Head | Tail], PID, Health, Patients, Disease) ->
-	find_coord(Tail, PID, Health, Patients, Disease).
+find_coord( [{PID, Coord} | _Tail], PID, Health, Patients) -> spread_to_neighbors(Coord, Health, Patients);
 
-spread_to_neighbors(_, _, [], _) -> ok;
-spread_to_neighbors(Coord1, Health, [{PID, Coord2} | Tail], Disease) ->
+find_coord( [_Head | Tail], PID, Health, Patients) -> find_coord(Tail, PID, Health, Patients).
+
+spread_to_neighbors(_, _, []) -> ok;
+spread_to_neighbors(Coord1, Health, [{PID, Coord2} | Tail]) ->
 	case is_neighbor(Coord1, Coord2) of
-		true -> infect(PID, Health, Disease);
+		true -> infect(PID, Health);
 		_ -> ok
 	end,
-	spread_to_neighbors(Coord1, Health, Tail, Disease).
+	spread_to_neighbors(Coord1, Health, Tail).
 
 
-infect(PID, Health, Disease) -> 
-	Treshold = case Health of 
-					clean -> 0;
-					dormant -> 0.2;
-					sick -> 0.4;
-					terminal -> 0.7;
-					dead -> 0
-				end,
-	Rnd = random:uniform(),
-	if 
-		Rnd < Treshold -> 
-			Disease ! {new_infected, PID},
-			PID ! sick
-	end.	
+infect(PID, Health) -> PID ! infect. 
+	%Threshold = case Health of 
+	%				clean -> 0;
+	%				dormant -> 0.2;
+	%				sick -> 0.4;
+	%				terminal -> 0.7;
+	%				dead -> 0
+	%			end,
+	%Rnd = random:uniform(),
+	%if 
+	%	Rnd < Threshold -> 
+	%		PID ! infect
+	%end.	
 
-run() ->
-	start(
-		["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"],
-		[clean, dormant, clean, clean],
-		[{0, 0}, {1, 0}, {0, 1}, {1, 1}],
-		{"E-Bola", 5, 0.5}
-	).
+start_simulation() ->
+    {ok, P} = python:start(),
+    python:call(P, ebola, run, [self()]),
+    wait_for_settings(P).
+
+wait_for_settings(PythonInstance) ->
+	receive
+		{initial_settings, Names, Health, Coordinates, {Tick_time, Disease_Strength}} -> start(PythonInstance, Names, Health, Coordinates, {Tick_time, Disease_Strength});
+		_ -> io:fwrite("Got a message")
+
+	end.
