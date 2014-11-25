@@ -59,21 +59,36 @@ loop(Name, Health, Server) ->
 	end.
 
 % Self explanatory, possibly sends a sick message
-send_sick_message(MyPid, Strength) -> MyPid ! sick.
-	%Rnd = random:uniform(),
-	%if 
-	%	Rnd < Strength -> self() ! sick 
-	%end.
+send_sick_message(MyPid, Strength) -> 
+	random:seed(erlang:now()),
+	Rnd = random:uniform(),
+	case Rnd < Strength of
+		true -> MyPid ! sick;
+		false -> false
+	end.
 
 send_spread_message(MyPid) -> MyPid ! spread.
 
 %Update your sickness
 change_state(Health) -> 
-	%%NEEDS RANDOMNESS
+	random:seed(erlang:now()),
+	Rnd = random:uniform(),
 	case Health of
-		dormant -> sick;
-		sick -> terminal;
-		terminal -> dead;
+		dormant ->
+			case Rnd < 0.3 of
+				true -> sick;
+				false -> dormant
+			end;
+		sick -> 
+			case Rnd < 0.5 of
+				true -> terminal;
+				false -> sick
+			end;
+		terminal -> 
+			case Rnd < 0.7 of
+				true -> dead;
+				false -> terminal
+			end;
 		dead -> dead
 	end.
 

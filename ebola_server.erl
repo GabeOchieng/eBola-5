@@ -1,5 +1,5 @@
 -module(ebola_server).
--export([s/0, start/5, loop/2]).
+-export([start/0, start/5, loop/2]).
 
 % Creates a list of Patient PIDs and spawns the server loop.
 % Takes in number of patients, a list of names and a list of their current health status
@@ -17,9 +17,6 @@ make_patients([Name | NTail], [Health | HTail], [Coord | CTail], Tick_time, Dise
 		[ {spawn(patient, start, [Name, Health, Tick_time, Disease_Strength]), Coord} | make_patients(NTail, HTail, CTail, Tick_time, Disease_Strength)].
 
 is_neighbor({X, Y}, {X2, Y2}) -> (abs(X2 - X) =< 1) and (abs(Y2 - Y) =< 1).	
-
-test_infect_patients([{PID, _} | []]) -> PID ! infect;
-test_infect_patients([{PID, _} | Tail]) -> PID ! infect, test_infect_patients(Tail).
 
 % Server loop.
 loop(PythonInstance, Patients) ->
@@ -63,28 +60,29 @@ spread_to_neighbors(Coord1, Health, [{PID, Coord2} | Tail]) ->
 
 
 %%NEEDS RANDOMNESS
-infect(PID, Health) -> PID ! infect. 
-	%Threshold = case Health of 
-	%				clean -> 0;
-	%				dormant -> 0.2;
-	%				sick -> 0.4;
-	%				terminal -> 0.7;
-	%				dead -> 0
-	%			end,
-	%Rnd = random:uniform(),
-	%if 
-	%	Rnd < Threshold -> 
-	%		PID ! infect
-	%end.	
+infect(PID, Health) -> %PID ! infect. 
+	Threshold = case Health of 
+					clean -> 0;
+					dormant -> 0.3;
+					sick -> 0.5;
+					terminal -> 0.7;
+					dead -> 0
+				end,
+	random:seed(erlang:now()),
+	Rnd = random:uniform(),
+	case Rnd < Threshold of
+		true -> PID ! infect;
+		false -> false
+	end.	
 
-s() ->
+start() ->
 	{ok, P} = python:start(),
 	python:call(P, frontend, main, [self()]),
 	wait_for_settings(P).
 
 wait_for_settings(PythonInstance) ->
 	receive
-		{initial_settings, Names, Health, Coordinates, {Tick_time, Disease_Strength}} -> io:fwrite("Got message"), start(PythonInstance, Names, Health, Coordinates, {Tick_time, Disease_Strength});
+		{initial_settings, Names, Health, Coordinates, {Tick_time, Disease_Strength}} -> start(PythonInstance, Names, Health, Coordinates, {Tick_time, Disease_Strength});
 		_ -> io:fwrite("Got a message")
 
 	end.
