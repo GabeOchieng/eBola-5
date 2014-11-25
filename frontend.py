@@ -2,8 +2,8 @@ import sys, getopt
 import random
 import pygame
 import eztext
-from erlport.erlterms import Atom
-from erlport.erlang import call, cast, set_message_handler
+#from erlport.erlterms import Atom
+#from erlport.erlang import call, cast, set_message_handler
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -11,6 +11,13 @@ RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
+
+NO_PERSON_COLOR = (250, 250, 250)
+CLEAN_COLOR = (0, 255, 0)
+DORMANT_COLOR = (255, 190, 190)
+SICK_COLOR = (255, 140, 140)
+TERMINAL_COLOR = (255, 100, 100)
+DEAD_COLOR = (0, 0, 0)
 
 flag = False
 
@@ -24,17 +31,17 @@ class Patient():
         # 0 is clean, 1 is dormant, 2 is sick, 3 is terminal, 4 is dead.
 
     def draw(self, screen):
-        color = WHITE
+        color = NO_PERSON_COLOR
         if (self.state == 1):
-            color = BLACK
+            color = CLEAN_COLOR
         elif (self.state == 2):
-            color = RED
+            color = DORMANT_COLOR
         elif (self.state == 3):
-            color = BLUE
+            color = SICK_COLOR
         elif (self.state == 4):
-            color = GREEN
+            color = TERMINAL_COLOR
         elif (self.state == 5):
-            color = YELLOW
+            color = DEAD_COLOR
 
         pygame.draw.rect(screen, color, self.outline, 0)
 
@@ -117,12 +124,12 @@ class Map():
 #Global bc handler for ErlPort exists at the module level.
 map = Map(50, 50, 400, 400)
 
-def handler(message):
+'''def handler(message):
 
     f = open('messages', 'a')
     f.write(str(message))
 
-set_message_handler(handler)
+set_message_handler(handler)'''
 
 class TextBox():
     def __init__(self, x, y, prompt):
@@ -182,18 +189,20 @@ class Button():
             flag = True
             #Supposedly this would talk to the backend to start the simulation
 
-def main(ServerPID):
-    Names = ["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"]
+#def main(ServerPID):
+def main():
+    ServerPID = 5
+    '''Names = ["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"]
     Health = [Atom("dormant"), Atom("clean"), Atom("clean"), Atom("clean")]
     Coords = [(0, 0), (1, 0), (0, 1), (1, 1)]
     DiseaseParams = (1, .5)
     cast(ServerPID, (Atom("initial_settings"), Names, Health, Coords, DiseaseParams))
-
+'''
  #   cast(ServerPID, (Atom("initial_settings"), ["Rob", "Paul"], [Atom("dormant"), Atom("clean")], [(0, 1), (1,1)], (.5,.5)))
     #while True:
     #    True
-    """pygame.init()
-    screen = pygame.display.set_mode([700, 800])
+    pygame.init()
+    screen = pygame.display.set_mode([700, 600])
 
     clock = pygame.time.Clock()
     done = False
@@ -233,7 +242,7 @@ def main(ServerPID):
         if flag:
             done = True
 
-    pygame.quit()"""
+    pygame.quit()
 
 if __name__ == '__main__':
     main()
