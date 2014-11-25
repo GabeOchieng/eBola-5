@@ -219,7 +219,7 @@ def run_frontend():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 ticktime.change_focus()
                 strength.change_focus()
-                if button.clicked():
+                if button.clicked(ticktime, strength):
                     break_flag = True
                 map.clicked()
 
