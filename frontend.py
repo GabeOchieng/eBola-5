@@ -182,7 +182,7 @@ class Button():
         label = self.font.render(self.text, 1, (255, 255, 0))
         screen.blit(label, (self.x + self.width/5, self.y + self.height/3))
 
-    def clicked(self):
+    def clicked(self, tick_time, strengh):
         if (self.outline.collidepoint(pygame.mouse.get_pos())):
             (Names, Coords, Health) = map.getInfo()
             global_q.put((Names, Health, Coords, (tick_time.getVal(), strength.getVal())))
