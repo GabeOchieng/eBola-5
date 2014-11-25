@@ -12,6 +12,8 @@ BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 
+flag = False
+
 class Patient():
 
     def __init__(self, x, y, i, j, width, height, name):
@@ -116,6 +118,7 @@ class Map():
 map = Map(50, 50, 400, 400)
 
 def handler(message):
+
     f = open('messages', 'a')
     f.write(str(message))
 
@@ -176,10 +179,20 @@ class Button():
             cast(self.ServerPID, (Atom("initial_settings"), Names, Health, Coords, DiseaseParams))
             self.outline = pygame.Rect(0,0,0,0)
             self.text = ""
+            flag = True
             #Supposedly this would talk to the backend to start the simulation
 
 def main(ServerPID):
-    pygame.init()
+    Names = ["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"]
+    Health = [Atom("dormant"), Atom("clean"), Atom("clean"), Atom("clean")]
+    Coords = [(0, 0), (1, 0), (0, 1), (1, 1)]
+    DiseaseParams = (1, .5)
+    cast(ServerPID, (Atom("initial_settings"), Names, Health, Coords, DiseaseParams))
+
+ #   cast(ServerPID, (Atom("initial_settings"), ["Rob", "Paul"], [Atom("dormant"), Atom("clean")], [(0, 1), (1,1)], (.5,.5)))
+    #while True:
+    #    True
+    """pygame.init()
     screen = pygame.display.set_mode([700, 800])
 
     clock = pygame.time.Clock()
@@ -217,8 +230,10 @@ def main(ServerPID):
 
         pygame.display.flip()
         
+        if flag:
+            done = True
 
-    pygame.quit()
+    pygame.quit()"""
 
 if __name__ == '__main__':
     main()
