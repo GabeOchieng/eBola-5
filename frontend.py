@@ -163,7 +163,7 @@ class TextBox():
 
     # need to know how to get value out of the real textboxes
     def getVal(self):
-        return .5
+        return self.textbox.get_text()
 
 class Button():
     def __init__(self, x, y, width, height, text, map, ticktime, strength):
@@ -185,7 +185,7 @@ class Button():
     def clicked(self):
         if (self.outline.collidepoint(pygame.mouse.get_pos())):
             (Names, Coords, Health) = map.getInfo()
-            global_q.put((Names, Health, Coords, (2, .5)))
+            global_q.put((Names, Health, Coords, (tick_time.getVal(), strength.getVal())))
             self.outline = pygame.Rect(0,0,0,0)
             self.text = ""
             return True
