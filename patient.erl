@@ -10,7 +10,7 @@ start(Name, Health, Tick_time, Disease_Strength) ->
 			{ok, _Tref} = timer:apply_interval((Tick_time * 1000), patient, send_spread_message, [Pid]), 
 
 			%Set interval to send myself a sick message
-			{ok, _Tref2} = timer:apply_interval(8000, patient, send_sick_message, [Pid, Disease_Strength]),
+			{ok, _Tref2} = timer:apply_interval((Tick_time * 2000), patient, send_sick_message, [Pid, Disease_Strength]),
 
 			% Go into main loop
 			loop(Name, Health, Server)
@@ -69,6 +69,7 @@ send_spread_message(MyPid) -> MyPid ! spread.
 
 %Update your sickness
 change_state(Health) -> 
+	%%NEEDS RANDOMNESS
 	case Health of
 		dormant -> sick;
 		sick -> terminal;

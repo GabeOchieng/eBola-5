@@ -27,13 +27,22 @@ loop(PythonInstance, Patients) ->
 	 %timer:apply_after(5000, ebola_server, loop, [Patients]).
 
 	receive
-		{state_change, Name, Health} -> python:cast(PythonInstance, {state_change, Name, Health}); % Produce new Patients list with changed state.
+		{state_change, Name, Health} -> python:cast(PythonInstance, {state_change, Name, health_to_int(Health)}); % Produce new Patients list with changed state.
 		{spread, PID, Health} 		 -> find_coord(Patients, PID, Health, Patients) % Need to find neighbors here.
 		% true 			 	-> print_patient_state("Fuckface", "sick")
 	after 0      			-> timeout
 	end,
 
 	loop(PythonInstance, Patients).
+
+health_to_int(Atom) ->
+	case Atom of
+		clean -> 1;
+		dormant -> 2;
+		sick -> 3;
+		terminal -> 4;
+		dead -> 5
+	end.
 
 send_server_to_patients([{PID, _} | []], Server) -> PID ! {server, Server};
 send_server_to_patients([{PID, _} | Tail], Server) -> PID ! {server, Server}, send_server_to_patients(Tail, Server).
@@ -53,6 +62,7 @@ spread_to_neighbors(Coord1, Health, [{PID, Coord2} | Tail]) ->
 	spread_to_neighbors(Coord1, Health, Tail).
 
 
+%%NEEDS RANDOMNESS
 infect(PID, Health) -> PID ! infect. 
 	%Threshold = case Health of 
 	%				clean -> 0;

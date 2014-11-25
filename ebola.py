@@ -1,8 +1,8 @@
+import multiprocessing
 from erlport.erlterms import Atom
 from erlport.erlang import call, cast, set_message_handler
 
 def handler(message):
-
     f = open('messages', 'a')
     f.write(str(message))
 

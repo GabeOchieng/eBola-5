@@ -2,8 +2,11 @@ import sys, getopt
 import random
 import pygame
 import eztext
-#from erlport.erlterms import Atom
-#from erlport.erlang import call, cast, set_message_handler
+import multiprocessing
+from erlport.erlterms import Atom
+from erlport.erlang import call, cast, set_message_handler
+
+global_q = multiprocessing.Queue()
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -18,8 +21,6 @@ DORMANT_COLOR = (255, 190, 190)
 SICK_COLOR = (255, 140, 140)
 TERMINAL_COLOR = (255, 100, 100)
 DEAD_COLOR = (0, 0, 0)
-
-flag = False
 
 class Patient():
 
@@ -73,6 +74,9 @@ class Patient():
         elif (self.state == 5):
             return Atom("dead")
 
+    def setHealth(self, Health):
+        self.state = Health
+
 class Map():
     # Will contain the array of "patients".
     # patient cout limit is currently set to 25.
@@ -121,15 +125,19 @@ class Map():
 
         return (Names, Coords, Health)
 
+    def update(self, Name, Health):
+        for patient in self.patients:
+            if patient.getName() == Name:
+                patient.setHealth(Health)
+
 #Global bc handler for ErlPort exists at the module level.
 map = Map(50, 50, 400, 400)
 
-'''def handler(message):
+def handler(message):
+    (MessageAtom, Name, Health) = message
+    global_q.put((Name, Health))
 
-    f = open('messages', 'a')
-    f.write(str(message))
-
-set_message_handler(handler)'''
+set_message_handler(handler)
 
 class TextBox():
     def __init__(self, x, y, prompt):
@@ -162,7 +170,7 @@ class TextBox():
         return .5
 
 class Button():
-    def __init__(self, x, y, width, height, text, map, ticktime, strength, ServerPID):
+    def __init__(self, x, y, width, height, text, map, ticktime, strength):
         self.x = x
         self.y = y
         self.width = width
@@ -172,7 +180,6 @@ class Button():
         self.text = text
         self.strength = strength
         self.ticktime = ticktime
-        self.ServerPID = ServerPID
 
     def draw(self, screen):
         pygame.draw.rect(screen, BLACK, self.outline, 0)
@@ -182,36 +189,30 @@ class Button():
     def clicked(self):
         if (self.outline.collidepoint(pygame.mouse.get_pos())):
             (Names, Coords, Health) = map.getInfo()
-            DiseaseParams = (5, self.strength.getVal())
-            cast(self.ServerPID, (Atom("initial_settings"), Names, Health, Coords, DiseaseParams))
+            global_q.put((Names, Health, Coords, (2, .5)))
             self.outline = pygame.Rect(0,0,0,0)
             self.text = ""
-            flag = True
+            return True
             #Supposedly this would talk to the backend to start the simulation
 
 #def main(ServerPID):
-def main():
-    ServerPID = 5
-    '''Names = ["Harry", "FuckFace", "ShitEater", "DumbFuckingFuck"]
-    Health = [Atom("dormant"), Atom("clean"), Atom("clean"), Atom("clean")]
-    Coords = [(0, 0), (1, 0), (0, 1), (1, 1)]
-    DiseaseParams = (1, .5)
-    cast(ServerPID, (Atom("initial_settings"), Names, Health, Coords, DiseaseParams))
-'''
- #   cast(ServerPID, (Atom("initial_settings"), ["Rob", "Paul"], [Atom("dormant"), Atom("clean")], [(0, 1), (1,1)], (.5,.5)))
-    #while True:
-    #    True
+def run_frontend():
+
+    done = False
+
     pygame.init()
     screen = pygame.display.set_mode([700, 600])
 
     clock = pygame.time.Clock()
-    done = False
 
     ticktime = TextBox(485, 150, 'Tick time: ')
     strength = TextBox(485, 200, 'Strength: ')
-    button = Button(150, 500, 200, 40, "Run Simulation", map, ticktime, strength, ServerPID)
+    button = Button(150, 500, 200, 40, "Run Simulation", map, ticktime, strength)
 
+    break_flag = False
     while not done:
+        if break_flag:
+            break
         clock.tick(30)
 
         events = pygame.event.get()
@@ -222,7 +223,8 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 ticktime.change_focus()
                 strength.change_focus()
-                button.clicked()
+                if button.clicked():
+                    break_flag = True
                 map.clicked()
 
         screen.fill(WHITE)
@@ -239,10 +241,38 @@ def main():
 
         pygame.display.flip()
         
-        if flag:
-            done = True
+    while not done:
+        clock.tick(30)
+
+        events = pygame.event.get()
+
+        for event in events:
+            if event.type == pygame.QUIT:
+                done = True
+
+        screen.fill(WHITE)
+
+        (Name, Health) = global_q.get()
+        map.update(Name, Health)
+
+        map.draw(screen)
+
+        ticktime.update(events)
+        ticktime.draw(screen)
+
+        strength.update(events)
+        strength.draw(screen)
+
+        button.draw(screen)
+        pygame.display.flip()
 
     pygame.quit()
+
+def main(ServerPID):
+    p = multiprocessing.Process(target=run_frontend, args=())
+    p.start()
+    (Names, Health, Coords, DiseaseParams) = global_q.get()
+    cast(ServerPID, (Atom("initial_settings"), Names, Health, Coords, DiseaseParams))
 
 if __name__ == '__main__':
     main()
