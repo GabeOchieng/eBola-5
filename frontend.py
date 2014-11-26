@@ -3,8 +3,8 @@ import random
 import pygame
 import eztext
 import multiprocessing
-from erlport.erlterms import Atom
-from erlport.erlang import call, cast, set_message_handler
+#from erlport.erlterms import Atom
+#from erlport.erlang import call, cast, set_message_handler
 
 global_q = multiprocessing.Queue()
 
@@ -17,6 +17,8 @@ DORMANT_COLOR = (255, 190, 190)
 SICK_COLOR = (255, 140, 140)
 TERMINAL_COLOR = (255, 100, 100)
 DEAD_COLOR = (0, 0, 0)
+
+SCREEN_SIZE = 700
 
 class Patient():
 
@@ -73,11 +75,16 @@ class Patient():
     def setHealth(self, Health):
         self.state = Health
 
+    def new_pos_and_size(self, x, y, width, height):
+        self.outline = pygame.Rect(x, y, width, height)
+
 class Map():
     # Will contain the array of "patients".
     # patient cout limit is currently set to 25.
 
     def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
         self.outline = pygame.Rect(x, y, width, height)
         self.offset = 5
         self.patients = []
@@ -126,6 +133,26 @@ class Map():
             if patient.getName() == Name:
                 patient.setHealth(Health)
 
+    def enlarge(self):
+        self.outline = pygame.Rect(self.x, self.y, SCREEN_SIZE - (2 * self.x), SCREEN_SIZE - (2 * self.x))
+        self.width = self.height = SCREEN_SIZE - (2 * self.x)
+
+        patient_width = ((self.width - self.offset) / 5) - self.offset
+        patient_height = ((self.height - self.offset) / 5) - self.offset
+
+        cur_patient_x = self.offset
+        cur_patient_y = self.offset
+
+        count = 0
+
+        for i in range(0, 5):
+            for j in range (0, 5):
+                self.patients[count].new_pos_and_size(self.x + cur_patient_x, self.y + cur_patient_y, patient_width, patient_height)
+                count += 1
+                cur_patient_x = cur_patient_x + (self.offset + patient_width)
+            cur_patient_x = self.offset
+            cur_patient_y = cur_patient_y + (self.offset + patient_height)   
+
 #Global bc handler for ErlPort exists at the module level.
 map = Map(50, 50, 400, 400)
 
@@ -133,7 +160,7 @@ def handler(message):
     (MessageAtom, Name, Health) = message
     global_q.put((Name, Health))
 
-set_message_handler(handler)
+#set_message_handler(handler)
 
 class TextBox():
     def __init__(self, x, y, prompt):
@@ -165,6 +192,10 @@ class TextBox():
     def getVal(self):
         return self.textbox.get_text()
 
+    def disappear(self):
+        self.outline = pygame.Rect(0,0,0,0)
+        self.textbox = eztext.Input(maxlength=5, color=RED, prompt="")
+
 class Button():
     def __init__(self, x, y, width, height, text, map, ticktime, strength):
         self.x = x
@@ -184,10 +215,18 @@ class Button():
 
     def clicked(self):
         if (self.outline.collidepoint(pygame.mouse.get_pos())):
-            (Names, Coords, Health) = map.getInfo()
-            global_q.put((Names, Health, Coords, (int(self.ticktime.getVal()), float(self.strength.getVal()))))
+            #(Names, Coords, Health) = map.getInfo()
+            #global_q.put((Names, Health, Coords, (int(self.ticktime.getVal()), float(self.strength.getVal()))))
             self.outline = pygame.Rect(0,0,0,0)
             self.text = ""
+
+            # Make the textboxes disappear
+            self.ticktime.disappear()
+            self.strength.disappear()
+            # Make Map larger
+            map.enlarge()
+
+
             return True
             #Supposedly this would talk to the backend to start the simulation
 
@@ -197,7 +236,7 @@ def run_frontend():
     done = False
 
     pygame.init()
-    screen = pygame.display.set_mode([700, 600])
+    screen = pygame.display.set_mode([SCREEN_SIZE, SCREEN_SIZE])
 
     clock = pygame.time.Clock()
 
@@ -219,8 +258,9 @@ def run_frontend():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 ticktime.change_focus()
                 strength.change_focus()
-                if button.clicked():
-                    break_flag = True
+                #if button.clicked(): 
+                    #break_flag = True
+                button.clicked()
                 map.clicked()
 
         screen.fill(WHITE)
@@ -264,11 +304,11 @@ def run_frontend():
 
     pygame.quit()
 
-def main(ServerPID):
+def main():
     p = multiprocessing.Process(target=run_frontend, args=())
     p.start()
     (Names, Health, Coords, DiseaseParams) = global_q.get()
-    cast(ServerPID, (Atom("initial_settings"), Names, Health, Coords, DiseaseParams))
+    #cast(ServerPID, (Atom("initial_settings"), Names, Health, Coords, DiseaseParams))
 
 if __name__ == '__main__':
     main()
