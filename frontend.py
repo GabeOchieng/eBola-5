@@ -182,10 +182,10 @@ class Button():
         label = self.font.render(self.text, 1, (255, 255, 0))
         screen.blit(label, (self.x + self.width/5, self.y + self.height/3))
 
-    def clicked(self, tick_time, strengh):
+    def clicked(self):
         if (self.outline.collidepoint(pygame.mouse.get_pos())):
             (Names, Coords, Health) = map.getInfo()
-            global_q.put((Names, Health, Coords, (tick_time.getVal(), strength.getVal())))
+            global_q.put((Names, Health, Coords, (int(self.ticktime.getVal()), float(self.strength.getVal()))))
             self.outline = pygame.Rect(0,0,0,0)
             self.text = ""
             return True
@@ -219,7 +219,7 @@ def run_frontend():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 ticktime.change_focus()
                 strength.change_focus()
-                if button.clicked(ticktime, strength):
+                if button.clicked():
                     break_flag = True
                 map.clicked()
 
