@@ -1,16 +1,29 @@
--module(patient).
--export([start/4, loop/3, spread_disease/3, send_sick_message/2, send_spread_message/1]).
+% patient.erl
+% eBola
+% 
+% COMP 50 - Mark Sheldon
+% Hyung-Seo Park, Robert Ruenes, and Paul Chang
+% 
+% This is the backend patient process that is kicked off by the ebola_server.
+% Patients know of the server but not of other patients.
+% 
 
-% Start the loop
+-module(patient).
+-export([start/4, loop/3, spread_disease/3, send_sick_message/2, 
+         send_spread_message/1]).
+
+% Start the patient loop
 start(Name, Health, Tick_time, Disease_Strength) -> 
 	receive
 		{server, Server} ->
 			Pid = self(),
 			% Set time interval to repeatededly send spread message to server.
-			{ok, _Tref} = timer:apply_interval((Tick_time * 1000), patient, send_spread_message, [Pid]), 
+			{ok, _Tref} = timer:apply_interval((Tick_time * 1000), patient, 
+                                                send_spread_message, [Pid]), 
 
 			%Set interval to send myself a sick message
-			{ok, _Tref2} = timer:apply_interval((Tick_time * 2000), patient, send_sick_message, [Pid, Disease_Strength]),
+			{ok, _Tref2} = timer:apply_interval((Tick_time * 2000), patient,
+                                  send_sick_message, [Pid, Disease_Strength]),
 
 			% Go into main loop
 			loop(Name, Health, Server)
@@ -19,34 +32,28 @@ start(Name, Health, Tick_time, Disease_Strength) ->
 % Continuously loop 
 loop(Name, Health, Server) ->
 	receive 
-
-		spread -> spread_disease(self(), Health, Server), loop(Name, Health, Server);
-		% Send when a sick neighbor has infected me
+        % Spread received from spread ticker.
+		spread -> 
+            spread_disease(self(), Health, Server), 
+            loop(Name, Health, Server);
+		% Recieved when a sick neighbor has infected me
 		infect -> 
 			case Health of
-
-				% Only effects me if I wasn't sick already.
+				% Only effects me if clean
 				clean ->
-
 					%Send state change to server and start spreading disease
 					New_Health = dormant,
 					Server ! {state_change, Name, New_Health}, 
-
 					loop(Name, New_Health, Server);
-
-
 				_ -> loop(Name, Health, Server)
 			end;
-
-		% Patient sent this message to itself, needs to check if it gets sicker	
+		% Patient sent this message to itself, Checks if will get sicker
 		sick -> 
-
 			case Health of 
-
-				% Nothing happens
+				% Nothing happens if clean or dead
 				clean -> loop(Name, Health, Server);
 				dead -> loop(Name, Health, Server);
-
+                
 				% Potentially change your state, notify server.
 				_ -> 
 					New_Health = change_state(Health),
@@ -58,7 +65,7 @@ loop(Name, Health, Server) ->
 		_ -> loop(Name, Health, Server)
 	end.
 
-% Self explanatory, possibly sends a sick message
+% Sends itself a sick message based on a random chance to progress.
 send_sick_message(MyPid, Strength) -> 
 	random:seed(erlang:now()),
 	Rnd = random:uniform(),
@@ -67,9 +74,10 @@ send_sick_message(MyPid, Strength) ->
 		false -> false
 	end.
 
+% Sends itself a spread message to send to the server to spread
 send_spread_message(MyPid) -> MyPid ! spread.
 
-%Update your sickness
+%Update your sickness based on a random chance
 change_state(Health) -> 
 	random:seed(erlang:now()),
 	Rnd = random:uniform(),
