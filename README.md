@@ -4,7 +4,11 @@ eBola
 Final project for COMP50 - Concurrent Programming at Tufts University.
 Created by Rob Ruenes, Paul Chang, and Hyung-seo Park.
 
-TO USE:
+TO USE: 
+start erl interpreter
+1> c(ebola_server).
+2> c(patient).
+3> ebola_server:start().
 
 Important files:
 frontend.py : Contains the two python processes for the front end gui
